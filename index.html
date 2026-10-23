@@ -345,7 +345,7 @@ details>summary::-webkit-details-marker{display:none}
       <div class="ifield" id="lgf-user">
         <label class="sr" for="lg-user">ชื่อผู้ใช้</label>
         <svg class="i lead" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>
-        <input id="lg-user" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="ชื่อผู้ใช้" required>
+        <input id="lg-user" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="ชื่อผู้ใช้ หรือ ชื่อ-สกุล" required>
       </div>
       <div class="ifield" id="lgf-pass">
         <label class="sr" for="lg-pass">รหัสผ่าน</label>
@@ -605,7 +605,7 @@ details>summary::-webkit-details-marker{display:none}
 const CFG = { url: 'https://jbmxeybohfdtoyasisfo.supabase.co', key: 'sb_publishable_cvmEt5BgOP3U6w2mCqmLJg_TC3HMZTD' };
 
 const DEMO = !(CFG.url && CFG.key);
-const APP_VER = '1.3.3';
+const APP_VER = '1.3.4';
 const DEFAULT_FLOORS = ['3B','3A','3','2A','2B','MA','M','B1','B2','B3'];
 const DEFAULT_MOTO = ['M','B1'];          // ชั้นที่จอดมอเตอร์ไซค์ได้
 const LIBS = {
@@ -728,7 +728,10 @@ function checkNight(n, floors, moto) {
 const Demo = {
   async info() { const d = demoDB.get(); return { floors: d.floors, moto_floors: d.moto_floors || DEFAULT_MOTO.slice(), capacity: d.capacity }; },
   async login(username, password) {
-    const d = demoDB.get(); const s = d.staff.find(x => x.active && x.username === String(username).trim().toLowerCase());
+    const d = demoDB.get(); const u = String(username).trim().replace(/\s+/g, ' ');
+    const byName = d.staff.filter(x => x.active && x.full_name.trim().replace(/\s+/g, ' ') === u);
+    if (byName.length > 1 && !d.staff.some(x => x.username === u.toLowerCase())) return { error: 'มีชื่อนี้มากกว่า 1 บัญชี กรุณาใช้ชื่อผู้ใช้แทน' };
+    const s = d.staff.find(x => x.active && x.username === u.toLowerCase()) || byName[0];
     if (!s || s.pin !== password) return { error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
     return { token: 'demo-' + Math.random().toString(36).slice(2), staff: pub(s) };
   },
@@ -919,7 +922,7 @@ const BTN_HTML = $('#lg-btn').innerHTML;
 $('#login-form').addEventListener('submit', async e => {
   e.preventDefault(); if (loggingIn) return;
   const u = $('#lg-user').value.trim(), p = $('#lg-pass').value;
-  if (!u) { $('#lg-err').textContent = 'กรุณาใส่ชื่อผู้ใช้'; $('#lg-user').focus(); return; }
+  if (!u) { $('#lg-err').textContent = 'กรุณาใส่ชื่อผู้ใช้ หรือ ชื่อ-สกุล'; $('#lg-user').focus(); return; }
   if (!p) { $('#lg-err').textContent = 'กรุณาใส่รหัสผ่าน'; $('#lg-pass').focus(); return; }
   loggingIn = true; const btn = $('#lg-btn'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังเข้าสู่ระบบ…'; $('#lg-err').textContent = '';
   try {
