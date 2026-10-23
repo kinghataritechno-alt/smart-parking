@@ -117,6 +117,10 @@ textarea.field{resize:vertical;min-height:84px}
 /* ---------- หน้ารถค้างคืน ---------- */
 .clock{padding:16px 16px 14px;display:flex;flex-direction:column;gap:12px}
 .clock-who{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px;color:var(--mut)}
+.logout-btn{height:40px;border-radius:20px;border:1px solid rgba(255,138,128,.55);background:rgba(160,14,22,.35);color:#fff;display:inline-flex;align-items:center;gap:6px;padding:0 14px 0 10px;font-size:14px;font-weight:600;flex-shrink:0}
+.logout-btn svg{width:20px;height:20px}
+.logout-btn:active{background:rgba(160,14,22,.6)}
+.exit-big{height:56px;border-radius:28px;font-size:16px;font-weight:700;color:#fff;border-color:rgba(255,138,128,.6);background:rgba(160,14,22,.45)}
 .clock-time{display:flex;justify-content:center;align-items:baseline;font-size:clamp(62px,21vw,104px);font-weight:700;line-height:.95;letter-spacing:1px;text-shadow:0 4px 24px rgba(0,0,0,.35)}
 .clock-time .colon{animation:blink 1s steps(1) infinite;margin:0 .02em;position:relative;top:-.06em}
 .clock-time .clk-s{font-size:.36em;color:var(--mut);font-weight:600;margin-left:.18em;min-width:1.3em}
@@ -261,7 +265,7 @@ details>summary::-webkit-details-marker{display:none}
 #toast.bad{background:#FFD9D5;color:#5A1410}
 #toast.ok{background:#D5F5DC;color:#0B3F1C}
 .dlg-back{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;display:flex;align-items:flex-end;justify-content:center;padding:16px}
-.dlg{background:var(--card);border-radius:26px;padding:20px;width:100%;max-width:440px;max-height:calc(100vh - 32px);overflow:auto;display:flex;flex-direction:column;gap:14px;margin-bottom:var(--safe-b)}
+.dlg{background:var(--solid);border:1px solid var(--line);box-shadow:0 20px 50px rgba(0,0,0,.5);border-radius:26px;padding:20px;width:100%;max-width:440px;max-height:calc(100vh - 32px);overflow:auto;display:flex;flex-direction:column;gap:14px;margin-bottom:var(--safe-b)}
 .dlg h2{margin:0;font-size:18px;font-weight:600}
 .dlg p{margin:0;font-size:14px;color:var(--mut2);line-height:1.6}
 .dlg .btns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
@@ -376,7 +380,7 @@ details>summary::-webkit-details-marker{display:none}
     <div class="wrap">
       <div class="stack">
         <div class="card clock">
-          <div class="clock-who"><span id="t-sub">คืนวัน</span><span>รถค้างคืน · ลานจอดรถ</span></div>
+          <div class="clock-who"><span id="t-sub">คืนวัน</span><button type="button" class="logout-btn" data-logout aria-label="ออกจากระบบ"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg><span>ออกจากระบบ</span></button></div>
           <div class="clock-time" role="timer" aria-label="เวลาปัจจุบัน"><span id="clk-h">--</span><span class="colon" aria-hidden="true">:</span><span id="clk-m">--</span><span class="clk-s" id="clk-s">:--</span></div>
           <div class="clock-date"><b id="clk-dmy">--/--/----</b><span id="clk-long">วัน</span></div>
           <div class="clock-meta">
@@ -477,8 +481,8 @@ details>summary::-webkit-details-marker{display:none}
       <div class="card row">
         <span class="fbadge on" id="me-av" style="border-radius:24px">ช</span>
         <div class="sp" style="min-width:0"><b id="me-name" style="display:block;font-weight:500"></b><span class="sub" id="me-role"></span></div>
-        <button type="button" class="pill sm" id="btn-logout">ออกจากระบบ</button>
       </div>
+      <button type="button" class="pill exit-big" id="btn-logout" data-logout><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>ออกจากระบบ</button>
       <button type="button" class="pill" id="btn-chpass">
         <svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>เปลี่ยนรหัสผ่าน
       </button>
@@ -601,7 +605,7 @@ details>summary::-webkit-details-marker{display:none}
 const CFG = { url: 'https://jbmxeybohfdtoyasisfo.supabase.co', key: 'sb_publishable_cvmEt5BgOP3U6w2mCqmLJg_TC3HMZTD' };
 
 const DEMO = !(CFG.url && CFG.key);
-const APP_VER = '1.3.2';
+const APP_VER = '1.3.3';
 const DEFAULT_FLOORS = ['3B','3A','3','2A','2B','MA','M','B1','B2','B3'];
 const DEFAULT_MOTO = ['M','B1'];          // ชั้นที่จอดมอเตอร์ไซค์ได้
 const LIBS = {
@@ -936,7 +940,8 @@ function forceLogout() {
   $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); document.body.classList.remove('has-dock');
   renderLogin();
 }
-$('#btn-logout').addEventListener('click', async () => {
+document.addEventListener('click', async e => {
+  if (!e.target.closest('[data-logout]')) return;
   if (!await dialog({ title: 'ออกจากระบบ?', body: 'ตัวเลขที่ยังไม่บันทึกจะเก็บเป็นฉบับร่างในเครื่องนี้', ok: 'ออกจากระบบ' })) return;
   saveDraftNow(); await API.logout(); forceLogout();
 });
