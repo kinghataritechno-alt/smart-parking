@@ -3,7 +3,7 @@
    - ไฟล์คงที่ (ไอคอน, ฟอนต์, ตัวสร้าง PDF): ใช้ของที่เก็บไว้ก่อน
    - ข้อมูล Supabase: ไม่เก็บเลย
    เปลี่ยนเลข VERSION ทุกครั้งที่อัปโหลด index.html ใหม่ */
-const VERSION = 'bp-1.3.4';
+const VERSION = 'bp-1.4.0';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './login-bg.webp', './login-floor.jpg', './logo-smart-terminal.png'];
 
 self.addEventListener('install', e => {

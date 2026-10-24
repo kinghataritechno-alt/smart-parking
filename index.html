@@ -156,6 +156,8 @@ textarea.field{resize:vertical;min-height:84px}
 .ftitle b{font-size:18px;font-weight:700}
 .ftitle span{font-size:13px;color:var(--mut)}
 .fcam{display:flex;align-items:center;gap:6px}
+.fthumbs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding-left:56px}
+.fthumbs .thumb{width:100%;height:auto;aspect-ratio:1}
 .thumb{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.12);border:1px solid var(--line);padding:0;overflow:hidden}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .cambtn{position:relative;width:48px;height:46px;border-radius:14px;border:1px solid var(--line2);background:var(--well);color:#fff;display:flex;align-items:center;justify-content:center}
@@ -209,7 +211,7 @@ body.has-dock .nav{display:none}
 .bigsteps input{flex:1;min-width:0;width:100%;height:48px;border:none;border-radius:12px;background:transparent;text-align:center;font-family:var(--mono);font-size:34px;font-weight:700;color:#fff;outline:none;padding:0}
 .bigsteps input:focus{background:var(--well)}
 .slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.slot{height:232px;border-radius:var(--r-card);overflow:hidden;position:relative;background:repeating-linear-gradient(135deg,#34353B 0 10px,#2C2D33 10px 20px)}
+.slot{height:186px;border-radius:var(--r-card);overflow:hidden;position:relative;background:repeating-linear-gradient(135deg,#34353B 0 10px,#2C2D33 10px 20px)}
 .slot img{width:100%;height:100%;object-fit:contain;background:#111;display:block}
 .slot .x{position:absolute;top:8px;right:8px;width:40px;height:40px;border-radius:20px;border:none;background:rgba(0,0,0,.65);color:#fff;display:flex;align-items:center;justify-content:center}
 .slot .add{position:absolute;inset:0;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--mut2);font-size:14px}
@@ -323,10 +325,10 @@ details>summary::-webkit-details-marker{display:none}
 .rp-sign .ln{border-bottom:1px dotted #5A5B62;height:30px}
 .rp-sign .mut{color:#5A5B62}
 .rp-foot{display:flex;justify-content:space-between;font-size:11px;color:#5A5B62;border-top:1px solid #D6D6DA;padding-top:6px}
-.rp-ph{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 14px}
-.rp-ph figure{margin:0;display:flex;flex-direction:column;gap:3px}
-.rp-ph img{width:100%;height:236px;object-fit:contain;border-radius:6px;background:#1C1D21;display:block}
-.rp-ph figcaption{font-size:12px;line-height:1.35}
+.rp-ph{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rp-ph figure{margin:0;display:flex;flex-direction:column;gap:3px;min-width:0}
+.rp-ph img{width:100%;height:236px;object-fit:contain;border-radius:5px;background:#1C1D21;display:block}
+.rp-ph figcaption{font-size:12px;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .rp-ph figcaption b{font-weight:600}
 .rp-ph figcaption span{color:#5A5B62}
 </style>
@@ -605,9 +607,10 @@ details>summary::-webkit-details-marker{display:none}
 const CFG = { url: 'https://jbmxeybohfdtoyasisfo.supabase.co', key: 'sb_publishable_cvmEt5BgOP3U6w2mCqmLJg_TC3HMZTD' };
 
 const DEMO = !(CFG.url && CFG.key);
-const APP_VER = '1.3.4';
+const APP_VER = '1.4.0';
 const DEFAULT_FLOORS = ['3B','3A','3','2A','2B','MA','M','B1','B2','B3'];
-const DEFAULT_MOTO = ['M','B1'];          // ชั้นที่จอดมอเตอร์ไซค์ได้
+const DEFAULT_MOTO = ['M','B1'];
+const MAX_PH = 4;                         // ภาพต่อชั้นสูงสุด          // ชั้นที่จอดมอเตอร์ไซค์ได้
 const LIBS = {
   html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
   jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
@@ -861,7 +864,7 @@ function loadImage(file) {
 }
 async function addPhoto(floor, file) {
   const day = S.cur.day, list = S.photos[floor] || [];
-  if (list.length >= 2) return toast('ชั้น ' + floor + ' มีภาพครบ 2 ภาพแล้ว ลบภาพเดิมก่อน', 'bad');
+  if (list.length >= MAX_PH) return toast('ชั้น ' + floor + ' มีภาพครบ ' + MAX_PH + ' ภาพแล้ว ลบภาพเดิมก่อน', 'bad');
   if (!file.type.startsWith('image/')) return toast('ไฟล์นี้ไม่ใช่ภาพ', 'bad');
   if (Date.now() - file.lastModified > 6 * 3600e3) return toast('ภาพนี้ถ่ายไว้นานเกิน 6 ชั่วโมง กรุณาถ่ายใหม่', 'bad');
   const im = await loadImage(file);
@@ -878,7 +881,7 @@ async function addPhoto(floor, file) {
   g.fillStyle = '#F5D547'; g.font = `500 ${Math.round(22 * k)}px Sarabun, sans-serif`;
   g.fillText(`${thDate(day)} ${bkk(taken).hm} น. · ${S.user.nick}`, Math.round(18 * k), H - band + band * 0.72, W - 36 * k);
   const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.62));
-  const seq = [1, 2].find(s => !list.some(p => p.seq === s));
+  const seq = Array.from({ length: MAX_PH }, (_, i) => i + 1).find(s => !list.some(p => p.seq === s));
   const rec = { key: `${day}|${floor}|${seq}`, day, floor, seq, blob, taken: taken.toISOString(), by: S.user.nick };
   await PhotoDB.put(rec);
   (S.photos[floor] = list.concat({ ...rec, url: URL.createObjectURL(blob) })).sort((a, b) => a.seq - b.seq);
@@ -896,7 +899,7 @@ $('#cam').addEventListener('change', async e => {
   try { await addPhoto(S.camFloor, f); } catch (err) { console.error(err); toast('บันทึกภาพไม่สำเร็จ: ' + err.message, 'bad'); }
 });
 function takePhoto(floor) {
-  if ((S.photos[floor] || []).length >= 2) return toast('ชั้น ' + floor + ' มีภาพครบ 2 ภาพแล้ว', 'bad');
+  if ((S.photos[floor] || []).length >= MAX_PH) return toast('ชั้น ' + floor + ' มีภาพครบ ' + MAX_PH + ' ภาพแล้ว', 'bad');
   S.camFloor = floor; saveDraftNow(); $('#cam').click();
 }
 
@@ -1040,18 +1043,23 @@ function buildRows() {
         <div class="fcam" data-ph="${esc(f)}"></div>
       </div>
       ${stepperHTML(f, 'cars', 'รถยนต์')}${motoOk(f) ? stepperHTML(f, 'motos', 'มอเตอร์ไซค์') : ''}
+      <div class="fthumbs hidden" id="th-${esc(f)}"></div>
     </div>`).join('');
   floorsOf(S.cur).forEach(renderRowPhotos);
 }
 function renderRowPhotos(f) {
   const el = $(`[data-ph="${CSS.escape(f)}"]`); if (!el) return;
-  const list = S.photos[f] || [];
-  el.innerHTML = list.map(p => `<button type="button" class="thumb" data-open="${esc(f)}" aria-label="ดูภาพชั้น ${esc(f)} ภาพ ${p.seq}"><img src="${p.url}" alt=""></button>`).join('')
-    + (list.length < 2
-      ? `<button type="button" class="cambtn" data-cam="${esc(f)}" aria-label="ถ่ายภาพชั้น ${esc(f)} (มี ${list.length} จาก 2 ภาพ)">${ICON.camL}<span class="n">${list.length}/2</span></button>`
-      : `<button type="button" class="cambtn full" data-open="${esc(f)}" aria-label="ภาพชั้น ${esc(f)} ครบ 2 ภาพ ดูหรือลบภาพ">${ICON.camL}<span class="n">2/2</span></button>`);
+  const list = S.photos[f] || [], n = list.length, full = n >= MAX_PH;
+  el.innerHTML = !full
+    ? `<button type="button" class="cambtn" data-cam="${esc(f)}" aria-label="ถ่ายภาพชั้น ${esc(f)} (มี ${n} จาก ${MAX_PH} ภาพ)">${ICON.camL}<span class="n">${n}/${MAX_PH}</span></button>`
+    : `<button type="button" class="cambtn full" data-open="${esc(f)}" aria-label="ภาพชั้น ${esc(f)} ครบ ${MAX_PH} ภาพ ดูหรือลบภาพ">${ICON.camL}<span class="n">${n}/${MAX_PH}</span></button>`;
+  const th = $('#th-' + CSS.escape(f));
+  if (th) {
+    th.innerHTML = list.map(p => `<button type="button" class="thumb" data-open="${esc(f)}" aria-label="ดูภาพชั้น ${esc(f)} ภาพ ${p.seq}"><img src="${p.url}" alt=""></button>`).join('');
+    th.classList.toggle('hidden', !n);
+  }
   const pc = $('#pc-' + CSS.escape(f));
-  if (pc) pc.textContent = list.length ? `ภาพ ${list.length}/2` + (list.length === 2 ? ' · ครบ' : '') : 'ยังไม่มีภาพ · แนบได้ 2 ภาพ';
+  if (pc) pc.textContent = n ? `ภาพ ${n}/${MAX_PH}` + (full ? ' · ครบ' : '') : `ยังไม่มีภาพ · แนบได้ ${MAX_PH} ภาพ`;
 }
 function renderFloorPhotos(f) { renderRowPhotos(f); if (S.fl === f && !$('#floor').classList.contains('hidden')) renderFloorSheet(); }
 
@@ -1216,8 +1224,8 @@ function renderFloorSheet() {
       <input id="big-${k}" data-f="${esc(f)}" data-k="${k}" value="${v}" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="00" autocomplete="off" enterkeyhint="next">
       <button type="button" class="inc" data-step="1" data-f="${esc(f)}" data-k="${k}" aria-label="เพิ่ม${lab}">+</button></div></div>`;
   }).join('');
-  $('#fl-pc').textContent = list.length ? `${list.length}/2 ภาพ${list.length === 2 ? ' · ครบแล้ว' : ''}` : 'ยังไม่มีภาพ';
-  $('#fl-slots').innerHTML = [1, 2].map(seq => {
+  $('#fl-pc').textContent = list.length ? `${list.length}/${MAX_PH} ภาพ${list.length >= MAX_PH ? ' · ครบแล้ว' : ''}` : `ยังไม่มีภาพ · แนบได้ ${MAX_PH} ภาพ`;
+  $('#fl-slots').innerHTML = Array.from({ length: MAX_PH }, (_, i) => i + 1).map(seq => {
     const ph = list[seq - 1];
     return ph ? `<div class="slot"><img src="${ph.url}" alt="ภาพชั้น ${esc(f)} ภาพที่ ${seq}"><button type="button" class="x" data-del="${esc(ph.key)}" aria-label="ลบภาพที่ ${seq}">${ICON.x}</button></div>`
       : `<div class="slot"><button type="button" class="add" data-cam="${esc(f)}"><span class="cbtn">${ICON.camL}</span>ถ่ายภาพที่ ${seq}</button></div>`;
@@ -1322,7 +1330,7 @@ function reportHTML(M) {
   const c = sum(n.cars), m = sum(n.motos), t = c + m;
   const pc = prev ? sum(prev.cars) : null, pm = prev ? sum(prev.motos) : null;
   const photoList = []; fl.forEach(f => (photos[f] || []).forEach(p => photoList.push({ f, p })));
-  const pages = 1 + Math.ceil(photoList.length / 9);
+  const pages = photoList.length ? 2 : 1;
   const recorder = (M.saved && !M.live) ? (M.saved.source === 'line' ? 'นำเข้าจาก LINE' : M.saved.recorded_name) : S.user.full_name;
   const signer = (M.saved && !M.live && M.saved.source === 'app') ? M.saved.recorded_name : (M.saved && !M.live ? '' : S.user.full_name);
   const printed = bkk(); const printedTxt = `${dmy(printed.day)} ${printed.hm} น.`;
@@ -1365,10 +1373,22 @@ function reportHTML(M) {
       <div><span class="ln"></span><span>( ........................................ )</span><span class="mut">ผู้แทนสำนักงบประมาณ</span></div>
     </div>${foot}</div>`;
 
-  for (let p = 0; p < photoList.length; p += 9) {
-    const chunk = photoList.slice(p, p + 9);
-    h += `<div class="rp-page rp">${head(2 + p / 9)}<h3>ภาพถ่ายประกอบการตรวจสอบ · ${thDate(n.day)}</h3>
-      <div class="rp-ph">${chunk.map(({ f, p: ph1 }) => `<figure><img src="${ph1.url}" alt=""><figcaption><b>ชั้น ${esc(f)} · ภาพ ${ph1.seq} · ${bkk(new Date(ph1.taken)).hm} น.</b><br><span>รถยนต์ ${n.cars[f] || 0} · มอเตอร์ไซค์ ${n.motos[f] || 0}</span></figcaption></figure>`).join('')}</div>
+  if (photoList.length) {
+    // ภาพทั้งหมดของคืนนั้นอยู่ในหน้าเดียว: เลือกจำนวนคอลัมน์ที่ให้ภาพใหญ่ที่สุดในพื้นที่ 698 × 880 px
+    const N = photoList.length, W = 698, H = 880, G = 8;
+    let best = null;
+    for (let c = 1; c <= 8; c++) {
+      const rows = Math.ceil(N / c), cap = c >= 5 ? 15 : (c >= 4 ? 30 : 34);
+      const cw = (W - (c - 1) * G) / c, ih = (H - (rows - 1) * G) / rows - cap;
+      if (ih < 40) continue;
+      const iw = Math.min(cw, ih * 0.75), area = iw * iw / 0.75;        // ภาพแนวตั้ง 3:4
+      if (!best || area > best.area) best = { c, rows, cap, ih: Math.floor(ih), area };
+    }
+    const { c, cap, ih } = best, compact = c >= 5, fs = c >= 6 ? 10 : (c >= 4 ? 11 : 12);
+    h += `<div class="rp-page rp">${head(2)}<h3>ภาพถ่ายประกอบการตรวจสอบ · ${thDate(n.day)} · ${N} ภาพ ${new Set(photoList.map(x => x.f)).size} ชั้น</h3>
+      <div class="rp-ph" style="grid-template-columns:repeat(${c},minmax(0,1fr));gap:${G}px">${photoList.map(({ f, p: ph1 }) => `<figure><img src="${ph1.url}" alt="" style="height:${ih}px"><figcaption style="font-size:${fs}px;height:${cap - 3}px">${compact
+        ? `<b>${esc(f)}-${ph1.seq}</b> · ${bkk(new Date(ph1.taken)).hm}`
+        : `<b>ชั้น ${esc(f)} · ภาพ ${ph1.seq} · ${bkk(new Date(ph1.taken)).hm} น.</b><br><span>รถยนต์ ${n.cars[f] || 0} · มอเตอร์ไซค์ ${n.motos[f] || 0}</span>`}</figcaption></figure>`).join('')}</div>
       <div style="margin-top:auto"></div>${foot}</div>`;
   }
   return h;
