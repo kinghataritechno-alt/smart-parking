@@ -536,6 +536,7 @@ details>summary::-webkit-details-marker{display:none}
     <div class="bigsteps" id="fl-steps"></div>
     <div class="row" style="padding:0 4px"><h2 class="sec-title sp" style="font-size:16px">ภาพถ่าย</h2><span class="sub" id="fl-pc"></span></div>
     <div class="slots" id="fl-slots"></div>
+    <button type="button" class="pill" id="fl-gal" style="height:48px;border-radius:24px;font-size:15px">เลือกภาพจากคลังภาพ (ถ่ายด้วยแอปกล้องไว้ก่อน)</button>
     <div class="row mut" style="font-size:12px;align-items:flex-start;padding:0 4px">
       <svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg>
       <span>ถ่ายใหม่ทุกคืน ภาพที่เก่ากว่า 6 ชั่วโมงใช้ไม่ได้ · ภาพเก็บในเครื่องนี้เท่านั้น และจะถูกลบหลังปิดรายงาน</span>
@@ -594,6 +595,7 @@ details>summary::-webkit-details-marker{display:none}
 
 <div id="pdf-stage" aria-hidden="true"></div>
 <input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
+<input type="file" id="gal" accept="image/*" class="hidden">
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="dlg-root"></div>
 
@@ -607,7 +609,7 @@ details>summary::-webkit-details-marker{display:none}
 const CFG = { url: 'https://jbmxeybohfdtoyasisfo.supabase.co', key: 'sb_publishable_cvmEt5BgOP3U6w2mCqmLJg_TC3HMZTD' };
 
 const DEMO = !(CFG.url && CFG.key);
-const APP_VER = '1.4.0';
+const APP_VER = '1.4.1';
 const DEFAULT_FLOORS = ['3B','3A','3','2A','2B','MA','M','B1','B2','B3'];
 const DEFAULT_MOTO = ['M','B1'];
 const MAX_PH = 4;                         // ภาพต่อชั้นสูงสุด          // ชั้นที่จอดมอเตอร์ไซค์ได้
@@ -671,16 +673,16 @@ function toast(msg, kind = '') {
   const t = $('#toast'); t.textContent = msg; t.className = 'show ' + kind;
   clearTimeout(toastT); toastT = setTimeout(() => t.className = kind, kind === 'bad' ? 4500 : 2600);
 }
-function dialog({ title, body = '', html = '', ok = 'ตกลง', cancel = 'ยกเลิก', danger = false }) {
+function dialog({ title, body = '', html = '', ok = 'ตกลง', cancel = 'ยกเลิก', alt = '', danger = false }) {
   return new Promise(res => {
     const root = $('#dlg-root');
     const prevFocus = document.activeElement;
     root.innerHTML = `<div class="dlg-back"><div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t">
       <h2 id="dlg-t">${esc(title)}</h2>${body ? `<p>${esc(body)}</p>` : ''}${html}
-      <div class="btns">${cancel ? `<button type="button" class="pill" data-v="0">${esc(cancel)}</button>` : ''}
+      <div class="btns">${cancel ? `<button type="button" class="pill" data-v="0">${esc(cancel)}</button>` : ''}${alt ? `<button type="button" class="pill" data-v="2">${esc(alt)}</button>` : ''}
       <button type="button" class="pill ${danger ? 'danger' : 'acc'}" data-v="1">${esc(ok)}</button></div></div></div>`;
-    const done = v => { const form = root.querySelector('.dlg'); const data = {}; $$('[name]', form).forEach(i => data[i.name] = i.type === 'checkbox' ? i.checked : i.value); root.innerHTML = ''; prevFocus && prevFocus.focus && prevFocus.focus(); res(v ? data : null); };
-    root.querySelector('.dlg-back').addEventListener('click', e => { if (e.target.classList.contains('dlg-back')) done(false); const b = e.target.closest('[data-v]'); if (b) done(b.dataset.v === '1'); });
+    const done = v => { const form = root.querySelector('.dlg'); const data = {}; $$('[name]', form).forEach(i => data[i.name] = i.type === 'checkbox' ? i.checked : i.value); root.innerHTML = ''; prevFocus && prevFocus.focus && prevFocus.focus(); res(v === true || v === '1' ? data : v === '2' ? 'alt' : null); };
+    root.querySelector('.dlg-back').addEventListener('click', e => { if (e.target.classList.contains('dlg-back')) done(false); const b = e.target.closest('[data-v]'); if (b) done(b.dataset.v); });
     root.querySelector('.dlg').addEventListener('keydown', e => { if (e.key === 'Escape') done(false); });
     const first = root.querySelector('input,select') || root.querySelector('[data-v="1"]'); first && first.focus();
   });
@@ -705,8 +707,8 @@ function demoSeed() {
     staff: [
       { id: 'm1', username: 'admin', full_name: 'ผู้ดูแลระบบ', nick: 'admin', role: 'manager', pin: 'admin', active: true, sort: 5 },
       { id: 's1', username: 'tech1', full_name: 'วิศรุต ยิ่งกว่าชาติ', nick: 'วิศรุต', role: 'tech', pin: '1111', active: true, sort: 10 },
-      { id: 's2', username: 'tech2', full_name: 'วีระ ทองดี', nick: 'วี', role: 'tech', pin: '2222', active: true, sort: 20 },
-      { id: 's3', username: 'tech3', full_name: 'ประเสริฐ มั่นคง', nick: 'เสริฐ', role: 'tech', pin: '3333', active: true, sort: 30 }
+      { id: 's2', username: 'tech2', full_name: 'ศรัณย์ พูลสวัสดิ์', nick: 'ศรัณย์', role: 'tech', pin: '222222', active: true, sort: 20 },
+      { id: 's3', username: 'tech3', full_name: 'กฤติ ล้ำเลิศ', nick: 'กฤติ', role: 'tech', pin: '333333', active: true, sort: 30 }
     ],
     nights: [
       { day: '2026-10-15', time: '22.30', cars: { '3B':3,'3A':1,'3':7,'2A':7,'2B':3,'MA':12,'M':14,'B1':11,'B2':11,'B3':1 }, motos: { M:19, B1:9 }, note: '', photo_count: 0, floors_shot: 0, recorded_name: 'นำเข้าจาก LINE', recorded_at: '2026-10-15T15:40:00Z', source: 'line' },
@@ -860,18 +862,48 @@ function photoStats(n = S.cur) {
   return { count: Object.values(S.photos).reduce((a, l) => a + l.length, 0), shot: shot.length, total: fl.length, missing: fl.filter(f => !(S.photos[f] || []).length) };
 }
 function loadImage(file) {
-  return new Promise((res, rej) => { const u = URL.createObjectURL(file); const im = new Image(); im.onload = () => { res(im); URL.revokeObjectURL(u); }; im.onerror = () => { rej(new Error('เปิดภาพไม่ได้')); URL.revokeObjectURL(u); }; im.src = u; });
+  return new Promise((res, rej) => { const u = URL.createObjectURL(file); const im = new Image(); im.onload = () => { res(im); URL.revokeObjectURL(u); }; im.onerror = () => { rej(new Error('เปิดภาพไม่ได้ (รูปแบบไฟล์ไม่รองรับ)')); URL.revokeObjectURL(u); }; im.src = u; });
+}
+/* เปิดภาพแบบประหยัดหน่วยความจำ: ให้เบราว์เซอร์ย่อภาพตอนถอดรหัส (กล้อง 50–200 ล้านพิกเซลทำให้มือถือบางรุ่นค้าง/ภาพดำ) */
+async function decodePhoto(file, alt) {
+  if (!alt && window.createImageBitmap) {
+    try {
+      const bm = await createImageBitmap(file, { imageOrientation: 'from-image', resizeWidth: 960, resizeQuality: 'high' });
+      if (bm.width > 0 && bm.height > 0) return { src: bm, w: bm.width, h: bm.height };
+    } catch (e) { console.warn('createImageBitmap', e); }
+  }
+  const im = await loadImage(file);
+  return { src: im, w: im.naturalWidth, h: im.naturalHeight };
+}
+function isBlank(c) {           // ภาพดำทั้งภาพ = ถอดรหัสไม่สำเร็จ
+  try { const t = document.createElement('canvas'); t.width = t.height = 12; const g = t.getContext('2d'); g.drawImage(c, 0, 0, 12, 12);
+    const d = g.getImageData(0, 0, 12, 12).data; let mx = 0; for (let i = 0; i < d.length; i += 4) mx = Math.max(mx, d[i], d[i + 1], d[i + 2]); return mx < 6; } catch (e) { return false; }
+}
+function canvasBlob(c) {
+  return new Promise(res => {
+    try { c.toBlob(b => res(b), 'image/jpeg', 0.62); } catch (e) { res(null); }
+  }).then(b => b || fetch(c.toDataURL('image/jpeg', 0.62)).then(r => r.blob()));
 }
 async function addPhoto(floor, file) {
   const day = S.cur.day, list = S.photos[floor] || [];
   if (list.length >= MAX_PH) return toast('ชั้น ' + floor + ' มีภาพครบ ' + MAX_PH + ' ภาพแล้ว ลบภาพเดิมก่อน', 'bad');
-  if (!file.type.startsWith('image/')) return toast('ไฟล์นี้ไม่ใช่ภาพ', 'bad');
-  if (Date.now() - file.lastModified > 6 * 3600e3) return toast('ภาพนี้ถ่ายไว้นานเกิน 6 ชั่วโมง กรุณาถ่ายใหม่', 'bad');
-  const im = await loadImage(file);
-  const W = Math.min(960, im.naturalWidth), H = Math.round(im.naturalHeight * W / im.naturalWidth);
-  const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const g = c.getContext('2d'); g.drawImage(im, 0, 0, W, H);
-  const taken = new Date(Math.min(Date.now(), file.lastModified || Date.now()));
+  if (file.type && !file.type.startsWith('image/')) return toast('ไฟล์นี้ไม่ใช่ภาพ', 'bad');
+  if (!file.size) return toast('ภาพว่างเปล่า กรุณาถ่ายใหม่', 'bad');
+  const lm = file.lastModified > 0 && file.lastModified <= Date.now() + 3600e3 ? file.lastModified : 0;   // บางเครื่องให้เวลาไฟล์เป็น 0
+  if (lm && Date.now() - lm > 6 * 3600e3) return toast('ภาพนี้ถ่ายไว้นานเกิน 6 ชั่วโมง กรุณาถ่ายใหม่', 'bad');
+  toast('กำลังบันทึกภาพชั้น ' + floor + '…');
+  const draw = async alt => {
+    const im = await decodePhoto(file, alt);
+    const W = Math.min(960, im.w), H = Math.round(im.h * W / im.w);
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    c.getContext('2d').drawImage(im.src, 0, 0, W, H);
+    if (im.src.close) im.src.close();
+    return c;
+  };
+  let c = await draw(false), dark = false;
+  if (isBlank(c)) { const c2 = await draw(true); if (!isBlank(c2)) c = c2; else dark = true; }
+  const W = c.width, H = c.height, g = c.getContext('2d');
+  const taken = new Date(Math.min(Date.now(), lm || Date.now()));
   const k = W / 960, band = Math.round(76 * k);
   try { await document.fonts.load(`600 ${Math.round(26 * k)}px Sarabun`); } catch (e) {}
   g.fillStyle = 'rgba(0,0,0,0.68)'; g.fillRect(0, H - band, W, band);
@@ -879,13 +911,19 @@ async function addPhoto(floor, file) {
   g.fillStyle = '#FFFFFF'; g.font = `600 ${Math.round(24 * k)}px Sarabun, sans-serif`;
   g.fillText(`ลานจอดรถ ชั้น ${floor} · อาคารสำนักงบประมาณ`, Math.round(18 * k), H - band + band * 0.32, W - 36 * k);
   g.fillStyle = '#F5D547'; g.font = `500 ${Math.round(22 * k)}px Sarabun, sans-serif`;
-  g.fillText(`${thDate(day)} ${bkk(taken).hm} น. · ${S.user.nick}`, Math.round(18 * k), H - band + band * 0.72, W - 36 * k);
-  const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.62));
-  const seq = Array.from({ length: MAX_PH }, (_, i) => i + 1).find(s => !list.some(p => p.seq === s));
-  const rec = { key: `${day}|${floor}|${seq}`, day, floor, seq, blob, taken: taken.toISOString(), by: S.user.nick };
-  await PhotoDB.put(rec);
-  (S.photos[floor] = list.concat({ ...rec, url: URL.createObjectURL(blob) })).sort((a, b) => a.seq - b.seq);
+  g.fillText(`${thDate(day)} ${bkk(taken).hm} น. · ${S.user?.nick || ''}`, Math.round(18 * k), H - band + band * 0.72, W - 36 * k);
+  const blob = await canvasBlob(c);
+  if (!blob || !blob.size) throw new Error('แปลงภาพไม่สำเร็จ');
+  const cur = S.photos[floor] || [];
+  const seq = Array.from({ length: MAX_PH }, (_, i) => i + 1).find(s => !cur.some(p => p.seq === s));
+  if (!seq) return toast('ชั้น ' + floor + ' มีภาพครบ ' + MAX_PH + ' ภาพแล้ว', 'bad');
+  const rec = { key: `${day}|${floor}|${seq}`, day, floor, seq, blob, taken: taken.toISOString(), by: S.user?.nick || '' };
+  let stored = true;
+  try { await PhotoDB.put(rec); } catch (e) { console.warn(e); stored = false; }
+  S.photos[floor] = cur.concat({ ...rec, url: URL.createObjectURL(blob) }).sort((a, b) => a.seq - b.seq);
   renderFloorPhotos(floor); updatePhotoStatus(); markDirty();
+  if (dark) toast(`แนบภาพชั้น ${floor} แล้ว แต่ภาพออกมาดำทั้งภาพ ตรวจเลนส์/แสง แล้วลบถ่ายใหม่ได้`, 'bad');
+  else toast(stored ? `แนบภาพชั้น ${floor} แล้ว (${S.photos[floor].length}/${MAX_PH})` : 'แนบภาพแล้ว แต่เครื่องนี้เก็บภาพไว้ไม่ได้ อย่าปิดแอปจนกว่าจะส่งรายงาน', stored ? 'ok' : 'bad');
 }
 async function removePhoto(floor, key) {
   await PhotoDB.del(key);
@@ -893,16 +931,45 @@ async function removePhoto(floor, key) {
   S.photos[floor] = (S.photos[floor] || []).filter(x => x.key !== key);
   renderFloorPhotos(floor); updatePhotoStatus(); markDirty();
 }
-$('#cam').addEventListener('change', async e => {
-  const f = e.target.files[0]; e.target.value = '';
+/* กล้องบนมือถือ Android บางรุ่นปิดหน้าเว็บทิ้งระหว่างเปิดกล้อง (หน่วยความจำไม่พอ) ภาพที่ถ่ายจึงไม่กลับเข้าแอป
+   จำไว้ก่อนเปิดกล้อง ถ้าหน้าแอปเปิดใหม่โดยไม่มีภาพเข้า → บอกวิธีแก้ และสลับไปใช้ "เลือกจากคลังภาพ" */
+const CAMKEY = 'bp_cam_pending', CAMALT = 'bp_cam_alt';
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+async function onPicked(e) {
+  const f = e.target.files && e.target.files[0]; e.target.value = '';
+  lsSet(CAMKEY, null);
   if (!f || !S.camFloor) return;
   try { await addPhoto(S.camFloor, f); } catch (err) { console.error(err); toast('บันทึกภาพไม่สำเร็จ: ' + err.message, 'bad'); }
-});
-function takePhoto(floor) {
-  if ((S.photos[floor] || []).length >= MAX_PH) return toast('ชั้น ' + floor + ' มีภาพครบ ' + MAX_PH + ' ภาพแล้ว', 'bad');
-  S.camFloor = floor; saveDraftNow(); $('#cam').click();
 }
-
+$('#cam').addEventListener('change', onPicked);
+$('#gal').addEventListener('change', onPicked);
+function openPicker(floor, gallery) {
+  S.camFloor = floor; saveDraftNow();
+  lsSet(CAMKEY, JSON.stringify({ floor, day: S.cur.day, n: (S.photos[floor] || []).length, at: Date.now(), gallery: !!gallery }));
+  $(gallery ? '#gal' : '#cam').click();
+}
+async function takePhoto(floor) {
+  if ((S.photos[floor] || []).length >= MAX_PH) return toast('ชั้น ' + floor + ' มีภาพครบ ' + MAX_PH + ' ภาพแล้ว', 'bad');
+  if (lsGet(CAMALT)) {
+    const v = await dialog({ title: 'แนบภาพชั้น ' + floor, body: 'เครื่องนี้เคยปิดแอปตอนเปิดกล้อง แนะนำ: ถ่ายด้วยแอปกล้องของมือถือก่อน แล้วกด "เลือกจากคลังภาพ"', ok: 'เลือกจากคลังภาพ', alt: 'เปิดกล้อง', cancel: 'ยกเลิก' });
+    if (v === 'alt') return openPicker(floor, false);
+    if (v) return openPicker(floor, true);
+    return;
+  }
+  openPicker(floor, false);
+}
+async function checkCameraReturn() {
+  let p = null; try { p = JSON.parse(lsGet(CAMKEY)); } catch (e) {}
+  lsSet(CAMKEY, null);
+  if (!p || !p.floor || Date.now() - p.at > 15 * 60e3 || !S.cur || p.day !== S.cur.day) return;
+  if ((S.photos[p.floor] || []).length > p.n) return;          // ภาพเข้าแล้ว
+  lsSet(CAMALT, '1');
+  const v = await dialog({ title: 'ภาพชั้น ' + p.floor + ' ไม่เข้าแอป',
+    body: 'มือถือเครื่องนี้ปิดหน้าแอปทิ้งระหว่างเปิดกล้อง (หน่วยความจำไม่พอ) ตัวเลขที่กรอกไว้ยังอยู่ครบ — ให้ถ่ายด้วยแอปกล้องของมือถือ แล้วกด "เลือกจากคลังภาพ" เลือกภาพที่เพิ่งถ่าย',
+    ok: 'เลือกจากคลังภาพ', cancel: 'ภายหลัง' });
+  if (v) openPicker(p.floor, true);
+}
 /* =====================================================================
    เข้าระบบ
    ===================================================================== */
@@ -975,6 +1042,7 @@ async function enterApp() {
   showTab('tonight');
   renderMe();
   flushQueue();
+  checkCameraReturn();
 }
 
 /* =====================================================================
@@ -1239,6 +1307,7 @@ $('#fl-slots').addEventListener('click', async e => {
   const b = e.target.closest('[data-del]'); if (!b) return;
   if (await dialog({ title: 'ลบภาพนี้?', ok: 'ลบภาพ', danger: true })) await removePhoto(S.fl, b.dataset.del);
 });
+$('#fl-gal').addEventListener('click', () => { const f = S.fl; if ((S.photos[f] || []).length >= MAX_PH) return toast('ชั้น ' + f + ' มีภาพครบ ' + MAX_PH + ' ภาพแล้ว', 'bad'); openPicker(f, true); });
 $('#fl-next').addEventListener('click', e => { const nx = e.currentTarget.dataset.next; if (nx) { S.fl = nx; renderFloorSheet(); $('#floor').scrollTop = 0; } else closeSheet($('#floor')); });
 
 /* =====================================================================
@@ -1646,6 +1715,9 @@ if (window.visualViewport) {
    เริ่มทำงาน
    ===================================================================== */
 (async function start() {
+  if (/\bLine\//i.test(navigator.userAgent) && !/openExternalBrowser=1/.test(location.search)) {   // เบราว์เซอร์ใน LINE แนบภาพไม่ได้ในหลายเครื่อง
+    location.replace(location.pathname + '?openExternalBrowser=1'); return;
+  }
   try { await loadInfo(); } catch (e) { toast(e.message, 'bad'); }
   let ses = null; try { ses = JSON.parse(localStorage.getItem(SKEY)); } catch (e) {}
   if (ses && ses.token && ses.user && (!DEMO || ses.token.startsWith('demo-'))) {
