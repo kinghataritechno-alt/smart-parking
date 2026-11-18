@@ -211,7 +211,7 @@ body.has-dock .nav{display:none}
 .bigsteps input{flex:1;min-width:0;width:100%;height:48px;border:none;border-radius:12px;background:transparent;text-align:center;font-family:var(--mono);font-size:34px;font-weight:700;color:#fff;outline:none;padding:0}
 .bigsteps input:focus{background:var(--well)}
 .slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.slot{height:186px;border-radius:var(--r-card);overflow:hidden;position:relative;background:repeating-linear-gradient(135deg,#34353B 0 10px,#2C2D33 10px 20px)}
+.slot{height:150px;border-radius:var(--r-card);overflow:hidden;position:relative;background:repeating-linear-gradient(135deg,#34353B 0 10px,#2C2D33 10px 20px)}
 .slot img{width:100%;height:100%;object-fit:contain;background:#111;display:block}
 .slot .x{position:absolute;top:8px;right:8px;width:40px;height:40px;border-radius:20px;border:none;background:rgba(0,0,0,.65);color:#fff;display:flex;align-items:center;justify-content:center}
 .slot .add{position:absolute;inset:0;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--mut2);font-size:14px}
@@ -609,10 +609,10 @@ details>summary::-webkit-details-marker{display:none}
 const CFG = { url: 'https://jbmxeybohfdtoyasisfo.supabase.co', key: 'sb_publishable_cvmEt5BgOP3U6w2mCqmLJg_TC3HMZTD' };
 
 const DEMO = !(CFG.url && CFG.key);
-const APP_VER = '1.4.1';
+const APP_VER = '1.5.0';
 const DEFAULT_FLOORS = ['3B','3A','3','2A','2B','MA','M','B1','B2','B3'];
 const DEFAULT_MOTO = ['M','B1'];
-const MAX_PH = 4;                         // ภาพต่อชั้นสูงสุด          // ชั้นที่จอดมอเตอร์ไซค์ได้
+const MAX_PH = 8;                         // ภาพต่อชั้นสูงสุด          // ชั้นที่จอดมอเตอร์ไซค์ได้
 const LIBS = {
   html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
   jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
@@ -1446,14 +1446,14 @@ function reportHTML(M) {
     // ภาพทั้งหมดของคืนนั้นอยู่ในหน้าเดียว: เลือกจำนวนคอลัมน์ที่ให้ภาพใหญ่ที่สุดในพื้นที่ 698 × 880 px
     const N = photoList.length, W = 698, H = 880, G = 8;
     let best = null;
-    for (let c = 1; c <= 8; c++) {
-      const rows = Math.ceil(N / c), cap = c >= 5 ? 15 : (c >= 4 ? 30 : 34);
+    for (let c = 1; c <= 12; c++) {
+      const rows = Math.ceil(N / c), cap = c >= 9 ? 13 : c >= 5 ? 15 : (c >= 4 ? 30 : 34);
       const cw = (W - (c - 1) * G) / c, ih = (H - (rows - 1) * G) / rows - cap;
       if (ih < 40) continue;
       const iw = Math.min(cw, ih * 0.75), area = iw * iw / 0.75;        // ภาพแนวตั้ง 3:4
       if (!best || area > best.area) best = { c, rows, cap, ih: Math.floor(ih), area };
     }
-    const { c, cap, ih } = best, compact = c >= 5, fs = c >= 6 ? 10 : (c >= 4 ? 11 : 12);
+    const { c, cap, ih } = best, compact = c >= 5, fs = c >= 9 ? 9 : c >= 6 ? 10 : (c >= 4 ? 11 : 12);
     h += `<div class="rp-page rp">${head(2)}<h3>ภาพถ่ายประกอบการตรวจสอบ · ${thDate(n.day)} · ${N} ภาพ ${new Set(photoList.map(x => x.f)).size} ชั้น</h3>
       <div class="rp-ph" style="grid-template-columns:repeat(${c},minmax(0,1fr));gap:${G}px">${photoList.map(({ f, p: ph1 }) => `<figure><img src="${ph1.url}" alt="" style="height:${ih}px"><figcaption style="font-size:${fs}px;height:${cap - 3}px">${compact
         ? `<b>${esc(f)}-${ph1.seq}</b> · ${bkk(new Date(ph1.taken)).hm}`
