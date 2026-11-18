@@ -567,6 +567,7 @@ details>summary::-webkit-details-marker{display:none}
         <svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"/></svg>แชร์ PDF
       </button>
     </div>
+    <div class="note hidden" id="sd-auto" role="status" aria-live="polite"></div>
     <button type="button" class="pill" id="sd-preview">ดูตัวอย่าง PDF</button>
     <div class="sub" style="text-align:center" id="sd-file"></div>
     <div class="note warn" id="sd-warn">
@@ -609,7 +610,7 @@ details>summary::-webkit-details-marker{display:none}
 const CFG = { url: 'https://jbmxeybohfdtoyasisfo.supabase.co', key: 'sb_publishable_cvmEt5BgOP3U6w2mCqmLJg_TC3HMZTD' };
 
 const DEMO = !(CFG.url && CFG.key);
-const APP_VER = '1.5.0';
+const APP_VER = '1.6.0';
 const DEFAULT_FLOORS = ['3B','3A','3','2A','2B','MA','M','B1','B2','B3'];
 const DEFAULT_MOTO = ['M','B1'];
 const MAX_PH = 8;                         // ภาพต่อชั้นสูงสุด          // ชั้นที่จอดมอเตอร์ไซค์ได้
@@ -834,13 +835,17 @@ const PhotoDB = {
   open() {
     if (this.db) return Promise.resolve(this.db);
     return new Promise((res, rej) => {
-      const r = indexedDB.open('bureau-parking', 1);
-      r.onupgradeneeded = () => { const s = r.result.createObjectStore('photos', { keyPath: 'key' }); s.createIndex('day', 'day'); };
+      const r = indexedDB.open('bureau-parking', 2);
+      r.onupgradeneeded = e => {
+        const db = r.result;
+        if (!db.objectStoreNames.contains('photos')) { const s = db.createObjectStore('photos', { keyPath: 'key' }); s.createIndex('day', 'day'); }
+        if (!db.objectStoreNames.contains('reports')) db.createObjectStore('reports', { keyPath: 'day' });   // รายงาน PDF ที่สร้างอัตโนมัติเมื่อบันทึก
+      };
       r.onsuccess = () => { this.db = r.result; res(this.db); };
       r.onerror = () => rej(r.error);
     });
   },
-  async tx(mode, fn) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('photos', mode); const out = fn(t.objectStore('photos')); t.oncomplete = () => res(out && out.result !== undefined ? out.result : out); t.onerror = () => rej(t.error); }); },
+  async tx(mode, fn, store = 'photos') { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction(store, mode); const out = fn(t.objectStore(store)); t.oncomplete = () => res(out && out.result !== undefined ? out.result : out); t.onerror = () => rej(t.error); }); },
   put(rec) { return this.tx('readwrite', s => s.put(rec)); },
   del(key) { return this.tx('readwrite', s => s.delete(key)); },
   byDay(day) { return this.tx('readonly', s => s.index('day').getAll(day)); },
@@ -848,6 +853,15 @@ const PhotoDB = {
   async delDay(day) { const list = await this.byDay(day); for (const p of list) await this.del(p.key); return list.length; },
   async purgeBefore(day) { const list = await this.all(); for (const p of list) if (p.day < day) await this.del(p.key); }
 };
+/* รายงาน PDF พร้อมภาพ เก็บในเครื่อง 30 คืน (ภาพต้นฉบับถูกลบเมื่อปิดรายงาน แต่ PDF ยังอยู่) */
+const ReportDB = {
+  put(rec) { return PhotoDB.tx('readwrite', s => s.put(rec), 'reports'); },
+  get(day) { return PhotoDB.tx('readonly', s => s.get(day), 'reports'); },
+  keys() { return PhotoDB.tx('readonly', s => s.getAllKeys(), 'reports'); },
+  del(day) { return PhotoDB.tx('readwrite', s => s.delete(day), 'reports'); },
+  async purgeBefore(day) { for (const d of await this.keys()) if (d < day) await this.del(d); }
+};
+async function loadReportDays() { try { S.reportDays = new Set(await ReportDB.keys()); } catch (e) { S.reportDays = new Set(); } }
 function revokePhotos() { Object.values(S.photos).flat().forEach(p => URL.revokeObjectURL(p.url)); }
 async function loadPhotos(day) {
   $('#fl-slots').innerHTML = '';                                   // ภาพเก่าในแผ่นที่ซ่อนอยู่ ใช้ลิงก์ที่ถูกปล่อยแล้ว
@@ -1036,7 +1050,9 @@ function upsertNight(row) { S.nights = S.nights.filter(n => n.day !== row.day).c
 async function enterApp() {
   $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
   try { await loadNights(); } catch (e) { toast(e.message, 'bad'); }
+  await loadReportDays();
   PhotoDB.purgeBefore(addDays(nightDay(), -3)).catch(() => {});
+  ReportDB.purgeBefore(addDays(nightDay(), -30)).catch(() => {});
   $('#day').max = bkk().day;
   await loadDay(nightDay());
   showTab('tonight');
@@ -1253,7 +1269,38 @@ async function saveNight() {
     } else { toast(e.message, 'bad'); return; }
   }
   await loadDay(n.day);
-  openSend(n.day);
+  await openSend(n.day);
+  autoReport(SD);                                     // สร้างรายงาน PDF พร้อมภาพทันทีทุกครั้งที่บันทึก
+}
+/* ---------------- รายงาน PDF อัตโนมัติ ---------------- */
+function setAuto(state, text) {
+  const el = $('#sd-auto'); if (!el) return;
+  el.className = 'note ' + (state === 'ok' ? 'ok' : state === 'bad' ? 'warn' : '');
+  el.innerHTML = (state === 'busy' ? '<span class="spin"></span>' : state === 'ok' ? ICON.ok : ICON.warn) + `<span>${esc(text)}</span>`;
+  el.classList.remove('hidden');
+}
+async function autoReport(M) {
+  if (!M) return;
+  const day = M.n.day, count = M.ph.count;
+  setAuto('busy', `กำลังสร้างรายงาน PDF พร้อมภาพ ${count} ภาพ…`);
+  M.pdfReady = (async () => {
+    while (exporting) await new Promise(r => setTimeout(r, 200));
+    exporting = true;
+    try { return await makePdf(M); } finally { exporting = false; }
+  })();
+  try {
+    const blob = await M.pdfReady;
+    M.pdfBlob = blob;
+    try {
+      await ReportDB.put({ day, name: pdfName(day), blob, photos: count, at: new Date().toISOString(), by: S.user?.full_name || '' });
+      (S.reportDays = S.reportDays || new Set()).add(day);
+    } catch (e) { console.warn(e); }
+    if (SD === M) setAuto('ok', `สร้างรายงาน PDF พร้อมภาพ ${count} ภาพแล้ว (${(blob.size / 1048576).toFixed(1)} MB) · กด "แชร์ PDF" ส่งเข้ากลุ่ม LINE ได้ทันที`);
+    if (S.tab === 'history') renderHistory();
+  } catch (e) {
+    console.error(e); M.pdfReady = null;
+    if (SD === M) setAuto('bad', 'สร้างรายงานอัตโนมัติไม่สำเร็จ: ' + e.message + ' — กด "แชร์ PDF" เพื่อลองอีกครั้ง');
+  }
 }
 
 /* ---------------- ปุ่มเลื่อน ---------------- */
@@ -1362,8 +1409,10 @@ async function openSend(day, fromForm) {
   $('#sd-line').href = 'https://line.me/R/msg/text/?' + encodeURIComponent(msg);
   $('#sd-file').textContent = 'ไฟล์ ' + pdfName(n.day) + ' · LINE แนบไฟล์ผ่านลิงก์ไม่ได้ ให้กด "แชร์ PDF" แล้วเลือกกลุ่ม LINE';
   const hasPhotos = Object.values(SD.photos).some(l => l.length);
-  $('#sd-warn-t').textContent = hasPhotos ? `เมื่อปิดรายงาน ภาพ ${ph.count} ภาพในเครื่องจะถูกลบ เหลือเฉพาะตัวเลขในระบบ — ส่ง PDF เข้ากลุ่ม LINE ก่อนปิด` : 'ไม่มีภาพในเครื่องสำหรับคืนนี้ (ปิดรายงานแล้ว หรือยังไม่ได้ถ่าย)';
+  $('#sd-warn-t').textContent = hasPhotos ? `เมื่อปิดรายงาน ภาพ ${ph.count} ภาพในเครื่องจะถูกลบ แต่รายงาน PDF พร้อมภาพยังเก็บในเครื่องนี้ 30 วัน — ส่ง PDF เข้ากลุ่ม LINE ก่อนปิด` : 'ไม่มีภาพในเครื่องสำหรับคืนนี้ (ปิดรายงานแล้ว หรือยังไม่ได้ถ่าย)';
   $('#slide-close').classList.toggle('hidden', !hasPhotos);
+  $('#sd-auto').classList.add('hidden');
+  if (S.reportDays && S.reportDays.has(day) && !hasPhotos) setAuto('ok', 'มีรายงาน PDF พร้อมภาพของคืนนี้เก็บในเครื่องแล้ว · กด "แชร์ PDF" เพื่อส่ง');
   $('#sd-warn').className = 'note ' + (hasPhotos ? 'warn' : 'ok');
   openSheet('#send');
 }
@@ -1498,10 +1547,18 @@ async function makePdf(M) {
 }
 let exporting = false;
 async function exportPdf(M, btn) {
-  if (exporting || !M) return; exporting = true;
-  const html = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง PDF…';
+  if (!M) return;
+  const html = btn.innerHTML;
+  if (M.pdfReady && !M.pdfBlob) {                     // รายงานอัตโนมัติกำลังสร้าง รอให้เสร็จแล้วใช้ไฟล์เดียวกัน
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง PDF…';
+    try { M.pdfBlob = await M.pdfReady; } catch (e) {}
+    btn.disabled = false; btn.innerHTML = html;
+  }
+  if (exporting) return; exporting = true;
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง PDF…';
   try {
-    const blob = await makePdf(M);
+    let blob = M.pdfBlob || null;
+    if (!blob) blob = await makePdf(M);
     const name = pdfName(M.n.day), file = new File([blob], name, { type: 'application/pdf' });
     window.__lastPdf = { name, size: blob.size, blob };
     if (window.claude && window.claude.use) {                        // เปิดผ่านหน้าทดลองใน Claude
@@ -1583,7 +1640,7 @@ function renderHistory() {
       <div class="info"><b>${esc(n.time)} น. · ${esc(src)}</b><span class="sub">รถยนต์ ${c} · มอเตอร์ไซค์ ${m}${n.photo_count ? ' · ภาพ ' + n.photo_count : ''}</span></div>
       <div class="tot"><b>${c + m}</b>${d == null ? '' : `<span class="sub" style="color:${d > 0 ? 'var(--bad)' : d < 0 ? 'var(--ok)' : 'var(--mut)'}">${d > 0 ? '▲ ' + d : d < 0 ? '▼ ' + (-d) : 'เท่าเดิม'}</span>`}</div></div>
       <div class="fchips">${chips.slice(0, 5).map(x => `<span>${esc(x[0])} ${x[1]}${x[2] ? '+' + x[2] : ''}</span>`).join('')}${chips.length > 5 ? `<span>+${chips.length - 5} ชั้น</span>` : ''}</div>
-      <div class="acts"><button type="button" class="pill sm" data-goto="${n.day}">เปิด / แก้ไข</button><button type="button" class="pill sm" data-send="${n.day}">ข้อความ</button><button type="button" class="pill sm" data-pdf="${n.day}">PDF</button>
+      <div class="acts"><button type="button" class="pill sm" data-goto="${n.day}">เปิด / แก้ไข</button><button type="button" class="pill sm" data-send="${n.day}">ข้อความ</button>${S.reportDays && S.reportDays.has(n.day) ? `<button type="button" class="pill sm acc" data-rpdf="${n.day}">PDF พร้อมภาพ</button>` : `<button type="button" class="pill sm" data-pdf="${n.day}">PDF</button>`}
       ${S.user.role === 'manager' ? `<button type="button" class="pill sm danger" data-delnight="${n.day}" aria-label="ลบรายงาน ${dmy(n.day)}">ลบ</button>` : ''}</div></div>`;
   });
   if (!list.length) h += '<div class="card sub">ยังไม่มีรายงาน</div>';
@@ -1604,6 +1661,12 @@ $('#h-list').addEventListener('click', async e => {
   const g = e.target.closest('[data-goto]'); if (g) { await loadDay(g.dataset.goto); showTab('tonight'); return; }
   const s = e.target.closest('[data-send]'); if (s) { openSend(s.dataset.send, false); return; }
   const p = e.target.closest('[data-pdf]'); if (p) { openReport(p.dataset.pdf, false); return; }
+  const rp = e.target.closest('[data-rpdf]');
+  if (rp) {
+    let rec = null; try { rec = await ReportDB.get(rp.dataset.rpdf); } catch (err) {}
+    if (!rec) { toast('ไม่พบไฟล์รายงานในเครื่อง', 'bad'); return; }
+    await exportPdf({ n: { day: rec.day }, pdfBlob: rec.blob }, rp); return;
+  }
   const d = e.target.closest('[data-delnight]');
   if (d && await dialog({ title: 'ลบรายงานคืน ' + dmy(d.dataset.delnight) + '?', body: 'ลบแล้วกู้คืนไม่ได้', ok: 'ลบรายงาน', danger: true })) {
     try { await API.del(d.dataset.delnight); S.nights = S.nights.filter(n => n.day !== d.dataset.delnight); toast('ลบรายงานแล้ว', 'ok'); refreshAfterData(); }
